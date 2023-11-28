@@ -1,0 +1,98 @@
+#cloud-config
+
+# This is the user-data configuration file for cloud-init. By default this sets
+# up an initial user called "ubuntu" with password "ubuntu", which must be
+# changed at first login. However, many additional actions can be initiated on
+# first boot from this file. The cloud-init documentation has more details:
+#
+# https://cloudinit.readthedocs.io/
+#
+# Some additional examples are provided in comments below the default
+# configuration.
+
+prefer_fqdn_over_hostname: true
+
+chpasswd:
+  expire: false
+
+packages:
+- ca-certificates
+- curl
+- jq
+
+# Update apt database and upgrade packages on first boot
+package_update: true
+package_upgrade: true
+
+write_files:
+- path: /etc/ssh/sshd_config.d/01-hardening.conf
+  content: |
+    # enable eed25519 key
+    HostKey /etc/ssh/ssh_host_ed25519_key
+    # restrict supported key exchange, cipher, and MAC algorithms
+    KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256
+    Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
+    MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com
+    HostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,sk-ssh-ed25519-cert-v01@openssh.com,rsa-sha2-256,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com
+    # restrict authentication mechanism
+    PasswordAuthentication yes
+    ChallengeResponseAuthentication no
+    PubkeyAuthentication yes
+  permissions: '0644'
+  owner: root:root
+ 
+- path: /etc/ssh/ssh_config.d/01-hardening.conf
+  content: |
+    Host github.com
+      KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256
+    Host *
+      # restrict supported key exchange, cipher, and MAC algorithms
+      KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256
+      Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
+      MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com
+      HostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,sk-ssh-ed25519-cert-v01@openssh.com,rsa-sha2-256,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com
+      # restrict authentication mechanism
+      PasswordAuthentication no
+      ChallengeResponseAuthentication no
+      PubkeyAuthentication yes
+  permissions: '0644'
+  owner: root:root
+
+- path: /etc/systemd/system/${application}-install.service 
+  content: |
+    [Unit]
+    Description=The initial install for ${application}
+    After=sshd.service
+
+    [Service]
+    Type=oneshot
+    ExecStart=${install_dir}/${application} install --no-prompt
+    ExecStart=bash -c "echo ${default_admin_console_password} | $${HOME}/.config/.${application}/bin/kubectl kots reset-password --kubeconfig $${HOME}/.config/.${application}/etc/kubeconfig --namespace embedded-cluster"
+    RemainAfterExit=yes
+    # the embedded cluster binary writes certain files to the home directory, so let's
+    # us our install directory for that one
+    Environment=HOME=/root
+    Environment=PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+
+    [Install]
+    WantedBy=multi-user.target
+  permissions: '0755'
+  owner: root:root
+
+runcmd:
+- |
+  # download the latest release of the Replicated embedded cluster from GitHub
+  export INSTALL_DIR=${install_dir}
+  mkdir $${INSTALL_DIR}
+  wget -O $${INSTALL_DIR}/embedded-cluster.tar.gz -q "$(curl -s https://api.github.com/repos/replicatedhq/embedded-cluster/releases/latest | jq -r '.assets[] | select(.browser_download_url | contains("linux-amd64")).browser_download_url')"
+  tar xzf $${INSTALL_DIR}/embedded-cluster.tar.gz -C $${INSTALL_DIR} embedded-cluster && mv $${INSTALL_DIR}/embedded-cluster $${INSTALL_DIR}/${application} && rm $${INSTALL_DIR}/embedded-cluster.tar.gz
+
+- |
+  # download the Replicated KOTS CLI, which plugs into the `kubectl` command
+  # and provides a subcommend to reset the password for the admin console
+  curl https://kots.io/install | bash
+
+- |
+  # enable the installation via systemd when an instance boots
+  systemctl daemon-reload
+  systemctl enable ${application}-install.service
