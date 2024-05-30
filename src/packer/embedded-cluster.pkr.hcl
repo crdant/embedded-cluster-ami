@@ -2,8 +2,11 @@ locals {
   user-data = templatefile("${var.project_root}/src/packer/templates/user-data.tmpl",
                              {
                                application = var.application
+                               channel = var.channel
                                install_dir = "/opt/${var.application}"
                                default_admin_console_password = var.admin_console_password
+                               replicated_api_token = var.replicated_api_token
+                               api_token = var.replicated_api_token
                              }
                           )
 }
@@ -18,7 +21,7 @@ packer {
 }
 
 source "amazon-ebs" "embedded-cluster" {
-  ami_name      = "${var.application}-ubuntu-22.04-lts"
+  ami_name      = "${var.application}-${var.channel}-ubuntu-22.04-lts"
   source_ami    = var.source_ami
   instance_type = var.instance_type
   
@@ -29,7 +32,13 @@ source "amazon-ebs" "embedded-cluster" {
 
   access_key = var.access_key_id
   secret_key = var.secret_access_key
-  region     = var.region
+  region     = var.build_region
+
+  ami_regions     = var.regions
+  ami_users       = [
+    "177217428600",
+    "429114214526"
+  ]
 
   ssh_username         = "ubuntu"
 
@@ -52,4 +61,9 @@ build {
     ]
   }
 
+  provisioner "shell" {
+    inline = [
+      "rm /home/ubuntu/.ssh/authorized_keys"
+    ]
+  }
 }

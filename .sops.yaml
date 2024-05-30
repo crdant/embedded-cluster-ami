@@ -1,6 +1,6 @@
 creation_rules:
 - path: secrets/params.yaml
-  encrypted_regex: 'access_key|password'
+  encrypted_regex: 'access_key|password|api_token'
   pgp: 905EBD494A6AA2B774ED5C67621620CDA290611D
 #    ,ANOTHER_FALSE_KEY_HERE
 # You can also isolate each key to specific directories by uncommenting the next 7 lines and adding the appropriate fingerprints
