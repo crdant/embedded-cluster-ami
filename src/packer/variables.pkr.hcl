@@ -41,4 +41,5 @@ variable "regions" {
 
 variable "replicated_api_token" {
   type = string
+  default = "us-west-2"
 }
