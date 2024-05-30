@@ -6,6 +6,10 @@ variable "application" {
   type = string
 }
 
+variable "channel" {
+  type = string
+}
+
 variable "admin_console_password" {
   type = string
 }
@@ -30,7 +34,15 @@ variable "secret_access_key" {
   type = string
 }
 
-variable "region" {
+variable "build_region" {
   type = string
+  default = "us-west-2"
 }
 
+variable "regions" {
+  type = list(string)
+}
+
+variable "replicated_api_token" {
+  type = string
+}

@@ -19,10 +19,14 @@ packages:
 - ca-certificates
 - curl
 - jq
+- python3-pip
 
 # Update apt database and upgrade packages on first boot
 package_update: true
 package_upgrade: true
+
+users:
+- default
 
 write_files:
 - path: /etc/ssh/sshd_config.d/01-hardening.conf
@@ -58,41 +62,53 @@ write_files:
   permissions: '0644'
   owner: root:root
 
-- path: /etc/systemd/system/${application}-install.service 
-  content: |
-    [Unit]
-    Description=The initial install for ${application}
-    After=sshd.service
-
-    [Service]
-    Type=oneshot
-    ExecStart=${install_dir}/${application} install --no-prompt
-    ExecStart=bash -c "echo ${default_admin_console_password} | $${HOME}/.config/.${application}/bin/kubectl kots reset-password --kubeconfig $${HOME}/.config/.${application}/etc/kubeconfig --namespace embedded-cluster"
-    RemainAfterExit=yes
-    # the embedded cluster binary writes certain files to the home directory, so let's
-    # us our install directory for that one
-    Environment=HOME=/root
-    Environment=PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
-
-    [Install]
-    WantedBy=multi-user.target
-  permissions: '0755'
-  owner: root:root
-
 runcmd:
 - |
-  # download the latest release of the Replicated embedded cluster from GitHub
-  export INSTALL_DIR=${install_dir}
-  mkdir $${INSTALL_DIR}
-  wget -O $${INSTALL_DIR}/embedded-cluster.tar.gz -q "$(curl -s https://api.github.com/repos/replicatedhq/embedded-cluster/releases/latest | jq -r '.assets[] | select(.browser_download_url | contains("linux-amd64")).browser_download_url')"
-  tar xzf $${INSTALL_DIR}/embedded-cluster.tar.gz -C $${INSTALL_DIR} embedded-cluster && mv $${INSTALL_DIR}/embedded-cluster $${INSTALL_DIR}/${application} && rm $${INSTALL_DIR}/embedded-cluster.tar.gz
+  # install the Replicated CLI to use for the download step
+  curl -s https://api.github.com/repos/replicatedhq/replicated/releases/latest \
+    | grep "browser_download_url.*linux_amd64.tar.gz" \
+    | cut -d : -f 2,3 \
+    | tr -d \" \
+    | wget -O replicated.tar.gz -qi -
+  tar xf replicated.tar.gz replicated && rm replicated.tar.gz
+  mv replicated /usr/local/bin/replicated
+
+- | 
+  # Download the embedded cluster airgap tarball and unpack it for later install
+  export PATH=$${PATH}:/usr/local/bin
+  export REPLICATED_API_TOKEN=${api_token}
+  ids=$(replicated app ls --output json | jq -r --arg app ${application}  --arg channel ${channel} '.[] | select(.app.slug == $app ) | { "app_id": .app.id, "channel_id": .channels[] | select( .channelSlug == $channel ) | .id }')
+  app_id=$(echo $ids | jq -r '.app_id')
+  channel_id=$(echo $ids | jq -r '.channel_id')
+  echo "fetching airgap bundle from /v3/app/$${app_id}/channel/$${channel_id}/embeddedcluster/release\?airgap=true"
+  replicated api get \
+      /v3/app/$${app_id}/channel/$${channel_id}/embeddedcluster/release\?airgap=true \
+    > /home/ubuntu/slackernews-mackerel.tgz
+  tar -xzvf /home/ubuntu/slackernews-mackerel.tgz -C /home/ubuntu --owner ubuntu --group ubuntu
+  rm /home/ubuntu/slackernews-mackerel.tgz
+
+- |
+  # uninstall the Replicated CLI since it's not useful to a customer
+  rm /usr/local/bin/replicated
+
+- |
+  # install cloud formation bootstrap scripts and signal completion
+  curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz -o /tmp/aws-cfn-bootstrap-latest.tar.gz \
+    && pip3 install /tmp/aws-cfn-bootstrap-latest.tar.gz \
+    && rm /tmp/aws-cfn-bootstrap-latest.tar.gz
+  
+- |
+  # install the boto3 library for accessing the AWS API
+  pip install boto3
 
 - |
   # download the Replicated KOTS CLI, which plugs into the `kubectl` command
   # and provides a subcommend to reset the password for the admin console
+  mkdir -p /var/lib/embedded-cluster/bin
+  export REPL_INSTALL_PATH=/var/lib/embedded-cluster/bin
   curl https://kots.io/install | bash
 
 - |
-  # enable the installation via systemd when an instance boots
-  systemctl daemon-reload
-  systemctl enable ${application}-install.service
+  # remove the authorized keys file for the user `root` to comply with Marketplace
+  # rules and avoid having a key on there that shouldn't be 
+  rm /root/.ssh/authorized_keys
