@@ -1,4 +1,3 @@
-
 source "amazon-ebs" "embedded-cluster" {
   ami_name      = "${var.application}-${var.channel}-ubuntu-22.04-lts"
   source_ami    = var.source_ami
@@ -22,3 +21,4 @@ source "amazon-ebs" "embedded-cluster" {
   ssh_username         = "ubuntu"
 
   user_data = local.user-data
+}

@@ -1,4 +1,3 @@
-
 packer {
   required_plugins {
     amazon = {
@@ -6,3 +5,4 @@ packer {
       version = "~> 1"
     }
   }
+}
