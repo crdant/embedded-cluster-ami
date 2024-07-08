@@ -42,6 +42,8 @@ write_files:
     PasswordAuthentication yes
     ChallengeResponseAuthentication no
     PubkeyAuthentication yes
+    # disable root logins
+    PermitRootLogin no
   permissions: '0644'
   owner: root:root
  
@@ -77,15 +79,17 @@ runcmd:
   # Download the embedded cluster airgap tarball and unpack it for later install
   export PATH=$${PATH}:/usr/local/bin
   export REPLICATED_API_TOKEN=${api_token}
+  mkdir -p /opt/${application}
   ids=$(replicated app ls --output json | jq -r --arg app ${application}  --arg channel ${channel} '.[] | select(.app.slug == $app ) | { "app_id": .app.id, "channel_id": .channels[] | select( .channelSlug == $channel ) | .id }')
   app_id=$(echo $ids | jq -r '.app_id')
   channel_id=$(echo $ids | jq -r '.channel_id')
   echo "fetching airgap bundle from /v3/app/$${app_id}/channel/$${channel_id}/embeddedcluster/release\?airgap=true"
   replicated api get \
       /v3/app/$${app_id}/channel/$${channel_id}/embeddedcluster/release\?airgap=true \
-    > /home/ubuntu/slackernews-mackerel.tgz
-  tar -xzvf /home/ubuntu/slackernews-mackerel.tgz -C /home/ubuntu --owner ubuntu --group ubuntu
-  rm /home/ubuntu/slackernews-mackerel.tgz
+    > /opt/${application}/${application}.tgz
+  tar -xzvf /opt/${application}/${application}.tgz -C /opt/${application} --owner 1118 --group 1118
+  rm /opt/${application}/${application}.tgz
+  chown 1118:1118 -R /opt/${application}
 
 - |
   # uninstall the Replicated CLI since it's not useful to a customer
@@ -108,7 +112,20 @@ runcmd:
   export REPL_INSTALL_PATH=/var/lib/embedded-cluster/bin
   curl https://kots.io/install | bash
 
+- | 
+  # remove SSH host keys to ensure they are regenerated when an instance is launched
+  shred -u /etc/ssh/*_key /etc/ssh/*_key.pub
+
 - |
   # remove the authorized keys file for the user `root` to comply with Marketplace
   # rules and avoid having a key on there that shouldn't be 
   rm /root/.ssh/authorized_keys
+
+- |
+  # disable local root access
+  passwd -l root
+
+- |
+  # neuter the ubuntu user since the ${application} user is the new default
+  chsh -s /usr/sbin/nologin ubuntu
+

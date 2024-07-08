@@ -10,10 +10,6 @@ variable "channel" {
   type = string
 }
 
-variable "admin_console_password" {
-  type = string
-}
-
 variable "instance_type" {
   type = string
 }
