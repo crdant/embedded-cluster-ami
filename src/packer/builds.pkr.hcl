@@ -1,5 +1,8 @@
 build {
-  sources = ["source.amazon-ebs.embedded-cluster"]
+  sources = [
+    "source.amazon-ebs.embedded-cluster",
+    "source.vsphere-iso.embedded-cluster"
+  ]
 
   provisioner "shell" {
     pause_before = "20s"
@@ -8,7 +11,7 @@ build {
     ]
   }
 
- provisioner "shell" {
+  provisioner "shell" {
     inline = [
       "sudo cloud-init clean",
       "sudo cloud-init clean -l",

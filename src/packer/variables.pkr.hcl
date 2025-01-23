@@ -22,6 +22,14 @@ variable "source_ami" {
   type = string
 }
 
+variable "source_iso" {
+  type    = string
+}
+
+variable "source_iso_checksum" {
+  type    = string
+}
+
 variable "access_key_id" {
   type = string
 }

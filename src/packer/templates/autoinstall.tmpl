@@ -1,0 +1,72 @@
+#cloud-config
+autoinstall:
+  interactive-sections: []
+  debug: true
+  reboot: true
+  version: 1
+  identity:
+    hostname: ubuntu-server
+    username: ubuntu
+    password: "$6$rounds=4096$your-salted-password-hash"
+    ssh:
+      install-server: true
+  storage:
+    layout:
+      name: direct
+      match:
+        size: largest
+    config:
+      - type: disk
+        id: disk0
+        match:
+          size: largest
+        ptable: gpt
+        wipe: superblock-recursive
+        grub_device: true
+      - type: partition
+        id: disk0-efi
+        device: disk0
+        size: 512M
+        flag: boot
+      - type: partition
+        id: disk0-swap
+        device: disk0
+        size: 4G
+      - type: partition
+        id: disk0-root
+        device: disk0
+        size: -1
+      - type: format
+        id: format-efi
+        fstype: fat32
+        volume: disk0-efi
+      - type: format
+        id: format-swap
+        fstype: swap
+        volume: disk0-swap
+      - type: format
+        id: format-root
+        fstype: ext4
+        volume: disk0-root
+      - type: mount
+        path: /boot/efi
+        device: format-efi
+      - type: mount
+        path: swap
+        device: format-swap
+      - type: mount
+        path: /
+        device: format-root
+  network:
+    version: 2
+    ethernets:
+      enp0s3:
+        dhcp4: true
+  ssh:
+    allow-pw: false
+    authorized-keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBjYVb3s6yk6x1RI8F8gzNmdFVhd9FgaxjjyMh5euaqR your-public-key
+  late-commands:
+    - sed -i 's/^#PermitRootLogin.*/PermitRootLogin prohibit-password/' /target/etc/ssh/sshd_config
+    - systemctl enable ssh --root=/target
+
