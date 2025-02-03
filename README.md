@@ -1,4 +1,4 @@
-# Replicated Embedded Cluster AMI Generator
+# Replicated Embedded Cluster Image Generator
 
 This project automates the creation of Amazon Machine Images (AMIs) for
 Replicated Embedded Cluster applications. It simplifies the process of
@@ -14,7 +14,7 @@ Marketplace as an AMI with CloudFormation Stack product.
 
 ## Overview
 
-The AMI generator uses Packer to build customized AMIs that include:
+The image generator uses Packer to build customized images that include:
 
 - A specific Replicated application and channel
 - The Embedded Cluster components
@@ -27,15 +27,18 @@ application pre-installed and ready to run in an air-gapped environment.
 
 ### Prerequisites
 
-1. AWS account with appropriate permissions
+1. Infstructure account with appropriate permissions (current supports AWS and
+   vSphere)
 2. Replicated vendor account and API token
 3. Application configured in the Replicated vendor portal
-4. `make`, `packer`, `jq`, `sops`, `yq`, and AWS CLI tools installed locally
+4. `make`, `packer`, `jq`, `sops`, and `yq`. For AWS, you will need the AWS CLI
+   tools installed locally. For vSphere, you will need the `ovftool`. Note:
+   there is a `Brewfile` and a `shell.nix` to help you with these dependencies.
 
 ### Preparing Parameters
 
 1. Copy `secrets/REDACTED-params.yaml` to `secrets/params.yaml`
-2. Update `params.yaml` with your AWS and Replicated credentials:
+2. Update `params.yaml` with your AWS/vSphere and Replicated credentials:
 
 ```yaml
 aws:
@@ -51,6 +54,21 @@ replicated:
 instance_type: t3.large
 volume_size: 100
 source_ami: ami-12345678
+
+vsphere:
+  server: vcenter.lab.shortrib.net
+  username: administrator@vsphere.local
+  password: REDACTED
+  datacenter: <YOUR VSPHERE DATA CENTER>
+  cluster: <A VSPHERE/VSAN CLUSTER>
+  host: <AN ESXI HOST IN YOUR CLUSTER>
+  resource_pool: <YOUR RESOURCE POOL>
+  network: <YOUR VSPHERE NETWORK>
+  datastore: <YOUR DATASTORE>
+
+ssh:
+    authorized_keys:
+      - <YOUR SSH PUBLIC KEY(S)
 ```
 
 3. Encrypt the params file:
@@ -59,7 +77,7 @@ source_ami: ami-12345678
 make encrypt
 ```
 
-### Generating an AMI
+### Generating an image
 
 The Makefile dynamically generates targets based on your Replicated Vendor
 Portal applications and channels. To build an AMI for a specific application
@@ -67,6 +85,12 @@ and channel:
 
 ```
 make ami:APP_SLUG/CHANNEL_SLUG
+```
+
+and to build an OVA
+
+```
+make ova:APP_SLUG/CHANNEL_SLUG
 ```
 
 For example:
@@ -79,10 +103,13 @@ To see all available targets:
 
 ```
 make -qp | grep -E '^ami:'
+make -qp | grep -E '^ova:'
 ```
 
-This will list all the dynamically generated `ami:APP_SLUG/CHANNEL_SLUG`
-targets based on your current Replicated Vendor Portal configuration.
+This will list all the dynamically generated `ami:APP_SLUG/CHANNEL_SLUG` and
+`ova:APP_SLUG/CHANNEL_SLUG` targets based on your current Replicated Vendor
+Portal configuration.
+
 
 ## Components
 
@@ -105,8 +132,9 @@ targets based on your current Replicated Vendor Portal configuration.
    necessary configuration
 4. Packer uses this configuration to launch an EC2 instance and customize it
 5. Cloud-init scripts run on first boot to set up the Replicated application
-6. Packer creates an AMI from the configured instance
-7. The AMI is shared to specified AWS regions and accounts
+6. Packer creates an AMI/OVA from the configured instance
+7. For an AMI, it is shared to specified AWS regions and accounts. For an OVA
+   it will be stored in the `work` directory under the project route.
 
 ## Key Makefile Features
 
@@ -116,7 +144,7 @@ targets based on your current Replicated Vendor Portal configuration.
   files
 - **Packer Integration**: Prepares variables for and executes Packer builds
 
-## Resulting AMI
+## Resulting AMI/OVA
 
 The generated AMI is specifically tailored for running your Replicated
 application in an air-gapped environment. Key features of the AMI include:
@@ -137,7 +165,7 @@ application in an air-gapped environment. Key features of the AMI include:
   - SSH password authentication disabled
 - **Multi-region**: The AMI is replicated to all specified AWS regions
 
-This AMI allows your customers to quickly deploy your application in an
+These images allow your customers to quickly deploy your application in an
 air-gapped environment with minimal additional configuration required. It's
 designed to be secure, efficient, and ready for production use.
 
