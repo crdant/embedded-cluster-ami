@@ -56,7 +56,7 @@ work/$(1)-$(2)-ubuntu-22.04-lts/$(1)-$(2)-ubuntu-22.04-lts.ovf: $(PKRVARS_FILE) 
 
 work/$(1)-$(2)-ubuntu-22.04-lts.ova: work/$(1)-$(2)-ubuntu-22.04-lts/$(1)-$(2)-ubuntu-22.04-lts.ovf 
 	python src/python/add-ovf-properties.py --application $(1) --channel $(2) work/$(1)-$(2)-ubuntu-22.04-lts/$(1)-$(2)-ubuntu-22.04-lts.ovf 
-	ovftool --targetType=OVA --diskMode=thin work/$(1)-$(2)-ubuntu-22.04-lts/$(1)-$(2)-ubuntu-22.04-lts.ovf work/$(1)-$(2)-ubuntu-22.04-lts.ova
+	ovftool --targetType=OVA --diskMode=thin --overwrite work/$(1)-$(2)-ubuntu-22.04-lts/$(1)-$(2)-ubuntu-22.04-lts.ovf work/$(1)-$(2)-ubuntu-22.04-lts.ova
 
 validate\:$(1)/$(2): $(PKRVARS_FILE)
 	packer validate --var 'application=$(1)' --var 'channel=$(2)' \
