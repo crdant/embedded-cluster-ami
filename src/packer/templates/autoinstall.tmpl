@@ -1,0 +1,70 @@
+#cloud-config
+autoinstall:
+  debconf-selections: tasksel tasksel/first multiselect standard, ssh-server
+  identity:
+    hostname: ${application}
+    password: $6$seYqS9fpyuTjGoJI$RJ0S361Q00/SFx2lsbpcG.jlqfhWWHtmDOzHOm1yEM5P0046o1CxrKLvl5FamcWURqJjncmUMN1Q64luv9S960
+    realname: Default system user
+    username: ubuntu
+  ssh:
+    allow-pw: false
+    authorized-keys:
+      ${indent(4, authorized-keys)}
+    install-server: true
+  keyboard:
+    layout: us
+  locale: en_US
+  network:
+    ethernets:
+      ens32:
+        dhcp4: true
+    version: 2
+  storage:
+    layout:
+      name: lvm
+    config:
+      - type: disk
+        id: disk0
+        ptable: gpt
+        path: /dev/sda
+        wipe: superblock-recursive
+
+      # EFI Partition (for UEFI systems)
+      - type: partition
+        id: efi-partition
+        size: 512M
+        flag: boot
+        device: disk0
+        mount: /boot/efi
+        filesystem: fat32
+
+      # LVM Volume Group
+      - type: lvm_volgroup
+        id: vg0
+        name: vg0
+        devices: [disk0]
+
+      # Single Root Partition (Everything in `/`)
+      - type: lvm_partition
+        id: lv-root
+        volgroup: vg0
+        size: -1  # Use all remaining space
+        name: root
+        mount: /
+        filesystem: ext4
+
+      # Swap Partition
+      - type: lvm_partition
+        id: lv-swap
+        volgroup: vg0
+        size: 8G
+        name: swap
+        mount: none
+  packages:
+    - open-vm-tools
+  user-data:
+    ${indent(4, user-data)}
+  late-commands:
+    - curtin in-target -- ssh-keygen -A
+  version: 1
+

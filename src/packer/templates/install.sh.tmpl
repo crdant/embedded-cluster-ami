@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+LICENSE_FILE="/var/lib/${application}/license.yaml"
+INSTALLER="/var/lib/${application}/${application}"
+AIRGAP_BUNDLE="/var/lib/${application}/${application}.airgap"
+INSTALL_PATH="/var/lib/embedded-cluster/bin/${application}"
+
+# Check if installation has already occurred
+if [ ! -f "$INSTALL_PATH" ]; then
+  vmtoolsd --cmd "info-get guestinfo.ovfEnv" | grep license-file | sed -n 's/.*value="\(.*\)".*/\1/p' | base64 -d > "$LICENSE_FILE"
+  ADMIN_PASSWORD=$(vmtoolsd --cmd "info-get guestinfo.ovfEnv" | grep admin-password | sed -n 's/.*value="\(.*\)".*/\1/p')
+  "$INSTALLER" install --license "$LICENSE_FILE" --admin-console-password "$ADMIN_PASSWORD" --airgap-bundle "$AIRGAP_BUNDLE" --skip-host-preflights
+  rm -f "$LICENSE_FILE"
+fi
+

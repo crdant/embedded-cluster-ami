@@ -1,24 +1,3 @@
-locals {
-  user-data = templatefile("${var.project_root}/src/packer/templates/user-data.tmpl",
-                             {
-                               application = var.application
-                               channel = var.channel
-                               install_dir = "/opt/${var.application}"
-                               replicated_api_token = var.replicated_api_token
-                               api_token = var.replicated_api_token
-                             }
-                          )
-}
-
-packer {
-  required_plugins {
-    amazon = {
-      source  = "github.com/hashicorp/amazon"
-      version = "~> 1"
-    }
-  }
-}
-
 source "amazon-ebs" "embedded-cluster" {
   ami_name      = "${var.application}-${var.channel}-ubuntu-22.04-lts"
   source_ami    = var.source_ami
@@ -44,17 +23,20 @@ source "amazon-ebs" "embedded-cluster" {
   user_data = local.user-data
 }
 
+
 build {
-  sources = ["source.amazon-ebs.embedded-cluster"]
+  sources = [
+    "source.amazon-ebs.embedded-cluster",
+  ]
 
   provisioner "shell" {
     pause_before = "20s"
     inline = [
-      "cloud-init status --wait",
+      "sudo cloud-init status --wait",
     ]
   }
 
- provisioner "shell" {
+  provisioner "shell" {
     inline = [
       "sudo cloud-init clean",
       "sudo cloud-init clean -l",
@@ -71,7 +53,7 @@ system_info:
     name: ${var.application}
     uid: 1118
     no_create_home: true
-    homedir: "/opt/${var.application}"
+    homedir: "/var/lib/${var.application}"
     groups:
     - users
     - sudo
@@ -91,8 +73,9 @@ SCRIPT
   provisioner "shell" {
     inline = [
       "export GLOBIGNORE=\".:..\"",
-      "rm -rf /home/ubuntu/.ssh",
-      "rm -rf /home/ubuntu/*"
+      "sudo rm -rf /home/ubuntu/.ssh",
+      "sudo rm -rf /home/ubuntu/*",
+      "chsh -s /usr/sbin/nologin ubuntu"
     ]
   }
 }

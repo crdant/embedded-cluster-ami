@@ -1,0 +1,13 @@
+[Unit]
+Description=Run Appliance Installation on First Boot
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/var/lib/${application}/install.sh
+RemainAfterExit=true
+ConditionPathExists=!/var/lib/embedded-cluster/bin/${application}
+
+[Install]
+WantedBy=multi-user.target
+
