@@ -9,12 +9,9 @@ pkgs.mkShell {
     pkgs.git
     pkgs.jq
     unstable.packer
-    pkgs.ansible
-    pkgs.terraform
     pkgs.libisoburn
     pkgs.gomplate
     unstable.ovftool
-    pkgs.powershell
     pkgs.python311  # Ensure a specific Python version
     pkgs.python311Packages.lxml  # For XML handling
     pkgs.sops

@@ -34,6 +34,7 @@ application pre-installed and ready to run in an air-gapped environment.
 4. `make`, `packer`, `jq`, `sops`, and `yq`. For AWS, you will need the AWS CLI
    tools installed locally. For vSphere, you will need the `ovftool`. Note:
    there is a `Brewfile` and a `shell.nix` to help you with these dependencies.
+   There is no brew for `ovfrool`.
 
 ### Preparing Parameters
 
