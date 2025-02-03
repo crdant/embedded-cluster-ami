@@ -19,7 +19,10 @@ This allows customers to easily launch instances with your Replicated applicatio
 1. AWS account with appropriate permissions
 2. Replicated vendor account and API token
 3. Application configured in the Replicated vendor portal
-4. `make`, `packer`, `jq`, `sops`, `yq`, and AWS CLI tools installed locally
+4. `make`, `packer`, `jq`, `sops`, and `yq`. For AWS, you will need the AWS CLI
+   tools installed locally. For vSphere, you will need the `ovftool`. Note:
+   there is a `Brewfile` and a `shell.nix` to help you with these dependencies.
+   There is no brew for `ovfrool`.
 
 ### Preparing Parameters
 
