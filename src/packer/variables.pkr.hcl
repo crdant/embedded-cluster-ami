@@ -14,6 +14,10 @@ variable "instance_type" {
   type = string
 }
 
+variable "shadow" {
+  type = string
+}
+
 variable "volume_size" {
   type = number
 }

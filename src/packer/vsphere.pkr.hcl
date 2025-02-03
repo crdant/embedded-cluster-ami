@@ -1,13 +1,22 @@
 locals {
-  autoinstall = templatefile("${var.project_root}/src/packer/templates/autoinstall.tmpl",{})
+  autoinstall       = templatefile("${var.project_root}/src/packer/templates/autoinstall.tmpl", {
+                              application = var.application,
+                              authorized-keys = yamlencode(var.authorized_keys),
+                              user-data = local.user-data
+                            })
+  installer-service = templatefile("${var.project_root}/src/packer/templates/installer.service.tmpl", {
+                              application = var.application
+                            })
+  install-script    = templatefile("${var.project_root}/src/packer/templates/install.sh.tmpl", {
+                              application = var.application
+                            })
 }
 
 source "vsphere-iso" "embedded-cluster" {
   vm_name      = "${var.application}-${var.channel}-ubuntu-22.04-lts"
 
-  CPUs                 = var.numvcpus
-  RAM                  = var.memsize
-  disk_controller_type = ["pvscsi"]
+  CPUs     = var.numvcpus
+  RAM      = var.memsize
 
   iso_url      = var.source_iso
   iso_checksum = var.source_iso_checksum
@@ -16,13 +25,15 @@ source "vsphere-iso" "embedded-cluster" {
     network = var.vsphere_network
   }
 
+  disk_controller_type = ["pvscsi"]
   storage {
-    disk_size = var.volume_size
-    disk_thin_provisioned = true
+    disk_size = var.volume_size * 1024
+    disk_thin_provisioned = false
   }
 
-  ssh_username         = "ubuntu"
-  ssh_timeout          = "10m"
+  ssh_username   = "ubuntu"
+  ssh_timeout    = "30m"
+  ssh_agent_auth = true
  
   vcenter_server      = var.vsphere_server
   username            = var.vsphere_username
@@ -31,9 +42,10 @@ source "vsphere-iso" "embedded-cluster" {
   cluster             = var.vsphere_cluster
   datastore           = var.vsphere_datastore
 
+  cd_label = "CIDATA"
   cd_content = {
     "/meta-data" = ""
-    "/user-data" = local.autoinstall # join(" ", [ local.autoinstall, local.user-data ])
+    "/user-data" = local.autoinstall 
   }
 
   boot_command = [
@@ -41,7 +53,7 @@ source "vsphere-iso" "embedded-cluster" {
     "<wait3s>c<wait3s>",
     // This types a command to load the Linux kernel from the specified path with the 'autoinstall' option and the value of the 'data_source_command' local variable.
     // The 'autoinstall' option is used to automate the installation process.
-    "linux /casper/vmlinuz --- autoinstall ds=\"nocloud-net\"",
+    "linux /casper/vmlinuz --- autoinstall",
     // This sends the "enter" key and then waits. This is typically used to execute the command and give the system time to process it.
     "<enter><wait>",
     // This types a command to load the initial RAM disk from the specified path.
