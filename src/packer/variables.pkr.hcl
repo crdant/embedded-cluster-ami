@@ -14,12 +14,24 @@ variable "instance_type" {
   type = string
 }
 
+variable "shadow" {
+  type = string
+}
+
 variable "volume_size" {
   type = number
 }
 
 variable "source_ami" {
   type = string
+}
+
+variable "source_iso" {
+  type    = string
+}
+
+variable "source_iso_checksum" {
+  type    = string
 }
 
 variable "access_key_id" {
@@ -41,4 +53,5 @@ variable "regions" {
 
 variable "replicated_api_token" {
   type = string
+  default = "us-west-2"
 }
