@@ -22,7 +22,13 @@ This allows customers to easily launch instances with your Replicated applicatio
 4. `make`, `packer`, `jq`, `sops`, and `yq`. For AWS, you will need the AWS CLI
    tools installed locally. For vSphere, you will need the `ovftool`. Note:
    there is a `Brewfile` and a `shell.nix` to help you with these dependencies.
-   There is no brew for `ovfrool`.
+
+
+Note that there is not longer a Brew formulat for `ovftool` and the Nix
+packager for `ovftool` does not install on MacOS with Apple Silicon. You will
+have to [Download it from
+Broadcom](https://developer.broadcom.com/tools/open-virtualization-format-ovf-tool/latest/)
+and install it manually.
 
 ### Preparing Parameters
 
